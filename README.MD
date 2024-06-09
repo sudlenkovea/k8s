@@ -46,3 +46,7 @@ You can customize your cluster configuration by editing the inventory.yaml file 
 Ensure all target nodes have network connectivity and can be accessed via SSH from the control machine.
 Review and adjust role variables and templates to match your cluster requirements and security policies.
 Use Ansible's --check flag to perform a dry run of your playbooks and identify any potential issues before applying changes to your live environment.
+
+## Authors
+
+- [Evgenii Sudlenkov](https://github.com/sudlenkovea)
