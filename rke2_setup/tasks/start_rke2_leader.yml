@@ -1,0 +1,41 @@
+- name: Ensure /etc/rancher/rke2 directory exists
+  ansible.builtin.file:
+    path: /etc/rancher/rke2
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Configure RKE2 on non-leader master nodes
+  ansible.builtin.template:
+    src: rke2_config.yaml.j2
+    dest: /etc/rancher/rke2/config.yaml
+  when:
+    - inventory_hostname in groups['masters']
+    - hostvars[inventory_hostname].get('leader', False) == True
+  vars:
+    rke2_token: "{{ rke2_server_token.stdout }}"
+
+- name: Enable and start RKE2 server service on leader
+  ansible.builtin.systemd:
+    name: rke2-server
+    enabled: yes
+    state: started
+  when:
+    - inventory_hostname in groups['masters']
+    - hostvars[inventory_hostname].get('leader', False) == True
+  async: 600
+  poll: 0
+  register: rke2_server_service
+
+- name: Wait for RKE2 server service to start on leader
+  ansible.builtin.async_status:
+    jid: "{{ rke2_server_service.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 60
+  delay: 10
+  when:
+    - inventory_hostname in groups['masters']
+    - hostvars[inventory_hostname].get('leader', False) == True
+    - rke2_server_service is defined

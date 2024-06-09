@@ -1,0 +1,16 @@
+- block:
+    - name: Ensure the manifests directory exists
+      ansible.builtin.file:
+        path: /var/lib/rancher/rke2/server/manifests
+        state: directory
+        mode: '0755'
+
+    - name: Configure RKE2 Ingress NGINX
+      ansible.builtin.copy:
+        dest: /var/lib/rancher/rke2/server/manifests/rke2-ingress-nginx-config.yaml
+        content: "{{ rke2_nginx_config_content }}"
+        mode: '0644'
+  when:
+    - inventory_hostname in groups['masters']
+    - rke2_nginx_config_content is defined
+    - rke2_nginx_config_content | length > 0

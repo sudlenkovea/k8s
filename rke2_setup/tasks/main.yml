@@ -1,0 +1,47 @@
+---
+- name: Install RKE2 on all nodes
+  ansible.builtin.import_tasks: install_rke2.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Setup kubectl and kubeconfig on all nodes
+  ansible.builtin.import_tasks: setup_kubectl_kubeconfig.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Add additional plugin options on master nodes
+  ansible.builtin.import_tasks: config_rke_plugins.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Start the RKE2 server on the leader node and wait for it to be ready
+  ansible.builtin.import_tasks: start_rke2_leader.yml
+  tags:
+    - cluster_setup
+
+- name: Fetch the RKE2 server token from the leader and distribute to followers
+  ansible.builtin.import_tasks: configure_rke2_vars.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Start RKE2 server on follower master nodes and wait for them to be ready
+  ansible.builtin.import_tasks: start_rke2_masters.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Start RKE2 client on follower worker nodes and wait for them to be ready
+  ansible.builtin.import_tasks: start_rke2_workers.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+- name: Verify the cluster by checking the nodes
+  ansible.builtin.import_tasks: verify_cluster.yml
+  tags:
+    - cluster_setup
+    - cluster_expand

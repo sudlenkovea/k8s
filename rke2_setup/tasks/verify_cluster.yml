@@ -1,0 +1,19 @@
+- name: Wait until all nodes are Ready
+  ansible.builtin.command: >
+    kubectl get nodes --kubeconfig /etc/rancher/rke2/rke2.yaml
+    --no-headers
+    -o custom-columns=NAME:.metadata.name,STATUS:.status.conditions[-1].type
+  register: kubectl_output
+  delegate_to: "{{ leader_ip }}"
+  run_once: true
+  retries: 60
+  delay: 10
+  until: kubectl_output.stdout.find("NotReady") == -1
+  ignore_errors: true
+
+- name: Show 'kubectl get nodes' output in desired format
+  ansible.builtin.debug:
+    msg: "{{ item.split()[0] }}: {{ item.split()[1] }}"
+  loop: "{{ kubectl_output.stdout_lines }}"
+  when: kubectl_output is defined and kubectl_output.stdout != ''
+  run_once: true

@@ -1,0 +1,4 @@
+- name: Setup and Expand RKE2 cluster
+  hosts: all
+  roles:
+    - rke2_setup

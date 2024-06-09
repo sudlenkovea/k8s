@@ -1,0 +1,10 @@
+---
+- name: Determine RKE2 installation type
+  set_fact:
+    rke_type: "{{ 'server' if inventory_hostname in groups['masters'] else 'agent' }}"
+
+- name: Install RKE2 (Server or Agent) based on node role
+  ansible.builtin.shell: |
+    curl -sfL https://get.rke2.io | INSTALL_RKE2_VERSION="{{ rke2_version }}" INSTALL_RKE2_TYPE="{{ rke_type }}" sh -
+  args:
+    creates: "/usr/local/lib/systemd/system/rke2-{{ rke_type }}.service"

@@ -1,0 +1,61 @@
+---
+# in this example we have ten VMs with IP addresses 10.0.10.1-10
+# the first three of them act as master nodes and have the NoExecute
+# tag (configured via kubelet_args variable), and seven workers, 
+# their parameters are defined in kubelet_args.
+all:
+  vars:
+    cluster_name: "cluster.example"
+    rke2_version: "v1.27.11+rke2r1"
+    disable_cloud_controller: true
+  children:
+    masters:
+      vars:
+        kubelet_args:
+          - "max-pods=150"
+        node_taint:
+          - "CriticalAddonsOnly=true:NoExecute"
+        rke2_nginx_config_content: |
+          ---
+          apiVersion: helm.cattle.io/v1
+          kind: HelmChartConfig
+          metadata:
+            name: rke2-ingress-nginx
+            namespace: kube-system
+          spec:
+            valuesContent: |-
+              controller:
+                allowSnippetAnnotations: true
+                use-proxy-protocol: true
+      hosts:
+        m1-prod:
+          ansible_host: 10.0.10.1
+          leader: true
+        m2-prod:
+          ansible_host: 10.0.10.2
+        m3-prod:
+          ansible_host: 10.0.10.3
+    agents:
+      vars:
+        kubelet_args:
+          - "system-reserved=cpu=1000m,memory=1000Mi,ephemeral-storage=2Gi"
+          - "kube-reserved=cpu=500m,memory=500Mi,ephemeral-storage=2Gi"
+          - "max-pods=150"
+          - "eviction-hard=imagefs.available<5%,imagefs.inodesFree<5%,memory.available<1Gi,nodefs.available<5%,nodefs.inodesFree<5%,pid.available<5%"
+          - "container-log-max-files=4"
+          - "container-log-max-size=50Mi"
+      hosts:
+        w1-prod:
+          ansible_host: 10.0.10.4
+        w2-prod:
+          ansible_host: 10.0.10.5
+        w3-prod:
+          ansible_host: 10.0.10.6
+        w4-prod:
+          ansible_host: 10.0.10.7
+        w5-prod:
+          ansible_host: 10.0.10.8
+        w6-prod:
+          ansible_host: 10.0.10.9
+        w7-prod:
+          ansible_host: 10.0.10.10

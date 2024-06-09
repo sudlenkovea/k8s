@@ -1,0 +1,20 @@
+- name: Identify leader's IP address
+  set_fact:
+    leader_ip: "{{ hostvars[item].ansible_host }}"
+  when: hostvars[item].leader | default(false) | bool
+  loop: "{{ groups['masters'] }}"
+  run_once: true
+
+- name: Fetch RKE2 server token from leader
+  ansible.builtin.shell: cat /var/lib/rancher/rke2/server/token
+  register: rke2_server_token
+  delegate_to: "{{ leader_ip }}"
+  run_once: true
+
+- name: Set leader IP for follower configuration
+  set_fact:
+    leader_ip: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
+  loop: "{{ groups['masters'] }}"
+  when: hostvars[item]['leader'] is defined and hostvars[item]['leader']
+  delegate_to: localhost
+  run_once: true

@@ -1,0 +1,33 @@
+{% if kubelet_args is defined %}
+kubelet-arg:
+{% for arg in kubelet_args %}
+  - "{{ arg }}"
+{% endfor %}
+{% endif %}
+{% if node_taint is defined %}
+node-taint:
+{% for taint in node_taint %}
+  - "{{ taint }}"
+{% endfor %}
+{% endif %}
+{% if leader is not defined %}
+server: https://{{ leader_ip }}:9345
+token: "{{ rke2_token }}"
+{% endif %}
+{% if disable_cloud_controller is defined and disable_cloud_controller %}
+disable-cloud-controller: true
+{% endif %}
+tls-san-security: false
+#tls-san:
+#  - "{{ ansible_fqdn.split('.')[-2:] | join('.') }}"
+#  - "{{ ansible_fqdn }}"
+#  - "{{ ansible_default_ipv4.address }}"
+cluster-domain: "{{ cluster_name }}"
+
+
+# Common settings for all nodes can be added below.
+# Example: Node labels, taints, or cluster CIDR settings.
+# node-label:
+#   - "key=value"
+# cluster-cidr: "10.42.0.0/16"
+# service-cidr: "10.43.0.0/16"
