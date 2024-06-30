@@ -39,6 +39,15 @@ ansible-playbook -i inventory.yaml rke2_setup.yaml --become --tag cluster_expand
 ```
 This command applies configurations only necessary for integrating new nodes into the cluster, expanding your cluster's capacity.
 
+### Adding Additional Plugins Configuration
+To add additional/change general plugins options, use the cluster_addons_config tag with the rke2_setup.yaml playbook. This will configure additional plugins according to the definitions in your rke2-inventory-example.yaml file.
+
+```sh
+Copy code
+ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml --become --tag cluster_addons_config -u sudo_enabled_or_root_user
+```
+This command will configure additional plugins (such as Ingress NGINX and CoreDNS) on the master nodes, so that the RKE2 helm integration can immediately apply the configurations to the cluster.
+
 ### Customizing Your Configuration
 You can customize your cluster configuration by editing the inventory.yaml file to specify the nodes, roles, and any variable overrides needed for your specific setup. Role-specific variables and templates can also be modified to fine-tune the behavior of your cluster deployment and management.
 

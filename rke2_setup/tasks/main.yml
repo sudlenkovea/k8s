@@ -16,6 +16,7 @@
   tags:
     - cluster_setup
     - cluster_expand
+    - cluster_addons_config
 
 - name: Start the RKE2 server on the leader node and wait for it to be ready
   ansible.builtin.import_tasks: start_rke2_leader.yml

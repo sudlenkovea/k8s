@@ -4,7 +4,10 @@
         path: /var/lib/rancher/rke2/server/manifests
         state: directory
         mode: '0755'
+  when:
+    - inventory_hostname in groups['masters']
 
+- block:
     - name: Configure RKE2 Ingress NGINX
       ansible.builtin.copy:
         dest: /var/lib/rancher/rke2/server/manifests/rke2-ingress-nginx-config.yaml
@@ -14,3 +17,14 @@
     - inventory_hostname in groups['masters']
     - rke2_nginx_config_content is defined
     - rke2_nginx_config_content | length > 0
+
+- block:
+    - name: Configure RKE2 CoreDNS
+      ansible.builtin.copy:
+        dest: /var/lib/rancher/rke2/server/manifests/rke2-coredns-config.yaml
+        content: "{{ rke2_coredns_config_content }}"
+        mode: '0644'
+  when:
+    - inventory_hostname in groups['masters']
+    - rke2_coredns_config_content is defined
+    - rke2_coredns_config_content | length > 0

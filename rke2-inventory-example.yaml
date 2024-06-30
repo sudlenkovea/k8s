@@ -27,6 +27,48 @@ all:
               controller:
                 allowSnippetAnnotations: true
                 use-proxy-protocol: true
+        rke2_coredns_config_content: |
+          ---
+          apiVersion: helm.cattle.io/v1
+          kind: HelmChartConfig
+          metadata:
+            name: rke2-coredns
+            namespace: kube-system
+          spec:
+            valuesContent: |-
+              replicaCount: 2
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 256Mi
+              autoscaler:
+                enabled: false
+              hpa:
+                enabled: true
+                minReplicas: 2
+                maxReplicas: 4
+                metrics:
+                - resource:
+                    name: cpu
+                    target:
+                      averageValue: 250m
+                      type: AverageValue
+                  type: Resource
+                behavior:
+                  scaleDown:
+                    policies:
+                      - periodSeconds: 60
+                        type: Pods
+                        value: 1
+                    selectPolicy: Max
+                    stabilizationWindowSeconds: 60
+                  scaleUp:
+                    policies:
+                      - periodSeconds: 20
+                        type: Pods
+                        value: 1
+                    selectPolicy: Max
+                    stabilizationWindowSeconds: 20
       hosts:
         m1-prod:
           ansible_host: 10.0.10.1
