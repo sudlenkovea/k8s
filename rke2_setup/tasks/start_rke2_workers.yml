@@ -1,32 +1,33 @@
-- name: Configure RKE2 on worker nodes
-  ansible.builtin.template:
-    src: rke2_config.yaml.j2
-    dest: /etc/rancher/rke2/config.yaml
-  when: inventory_hostname in groups['agents']
-  vars:
-    rke2_token: "{{ rke2_server_token.stdout }}"
-  notify: restart rke2-agent
+- name: Configure and start RKE2 on worker nodes
+  block:
+    - name: Configure RKE2 on worker nodes
+      ansible.builtin.template:
+        src: rke2_config.yaml.j2
+        dest: /etc/rancher/rke2/config.yaml
+      vars:
+        rke2_token: "{{ rke2_server_token.stdout }}"
+      notify: restart rke2-agent
 
-- name: Enable and start RKE2 agent service on worker node
-  throttle: 1
-  ansible.builtin.systemd:
-    name: rke2-agent
-    enabled: yes
-    state: started
-  when: inventory_hostname in groups['agents']
-  async: 600
-  poll: 0
-  register: rke2_agent_service
-  changed_when: false
+    - name: Enable and start RKE2 agent service on worker node
+      throttle: 1
+      ansible.builtin.systemd:
+        name: rke2-agent
+        enabled: yes
+        state: started
+      async: 600
+      poll: 0
+      register: rke2_agent_service
+      changed_when: false
 
-- name: Wait for RKE2 agent service to start on worker node
-  throttle: 1
-  ansible.builtin.async_status:
-    jid: "{{ rke2_agent_service.ansible_job_id }}"
-  register: job_result
-  until: job_result.finished
-  retries: 60
-  delay: 10
+    - name: Wait for RKE2 agent service to start on worker node
+      throttle: 1
+      ansible.builtin.async_status:
+        jid: "{{ rke2_agent_service.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 60
+      delay: 10
+      when: rke2_agent_service is defined
   when:
     - inventory_hostname in groups['agents']
-    - rke2_agent_service is defined
+    - groups['agents'] | length > 0
