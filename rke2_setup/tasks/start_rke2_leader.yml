@@ -13,8 +13,6 @@
   when:
     - inventory_hostname in groups['masters']
     - hostvars[inventory_hostname].get('leader', False) == True
-  vars:
-    rke2_token: "{{ rke2_server_token.stdout }}"
 
 - name: Enable and start RKE2 server service on leader
   ansible.builtin.systemd:
