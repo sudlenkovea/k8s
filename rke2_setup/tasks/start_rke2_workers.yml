@@ -29,5 +29,6 @@
       delay: 10
       when: rke2_agent_service is defined
   when:
-    - inventory_hostname in groups['agents']
+    - "'agents' in groups"
     - groups['agents'] | length > 0
+    - inventory_hostname in groups['agents']
