@@ -1,0 +1,38 @@
+---
+# System packages to install via apt
+system_packages:
+  - net-tools
+  - screen
+  - software-properties-common
+  - ufw
+  - telnet
+  - traceroute
+  - qemu-guest-agent
+
+# Common packages to install via package manager
+common_packages:
+  - mc
+  - unzip 
+  - iftop
+  - iotop
+
+# Packages to remove from the system
+packages_to_remove:
+  - fail2ban
+  - metricbeat
+  - snapd
+
+# Configuration flags
+configure_sysctl_limits: true
+configure_custom_inotify: true
+reboot_after_system_prep: true
+
+# RKE2 installation configuration
+rke2_version: "v1.32.5+rke2r1"
+rke2_local_download_path: "/tmp/rke2_downloads"
+rke2_remote_install_path: "/tmp/rke2_install"
+
+# RKE2 configuration parameters
+etcd_expose_metrics: false          # set to true to expose etcd metrics
+kube_scheduler_arg: []              # list of extra arguments for kube-scheduler
+kube_controller_manager_arg: []     # list of extra arguments for kube-controller-manager

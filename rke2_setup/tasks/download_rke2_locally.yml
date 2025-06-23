@@ -1,0 +1,59 @@
+---
+- name: Create local RKE2 artifacts directory
+  ansible.builtin.file:
+    path: "{{ rke2_local_download_path }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  run_once: true
+
+- name: Download RKE2 install script
+  ansible.builtin.get_url:
+    url: https://get.rke2.io
+    dest: "{{ rke2_local_download_path }}/install.sh"
+    mode: '0755'
+    force: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Download RKE2 binary archive
+  ansible.builtin.get_url:
+    url: "https://github.com/rancher/rke2/releases/download/{{ rke2_version }}/rke2.linux-amd64.tar.gz"
+    dest: "{{ rke2_local_download_path }}/rke2.linux-amd64.tar.gz"
+    mode: '0644'
+    force: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Download RKE2 images archive
+  ansible.builtin.get_url:
+    url: "https://github.com/rancher/rke2/releases/download/{{ rke2_version }}/rke2-images.linux-amd64.tar.zst"
+    dest: "{{ rke2_local_download_path }}/rke2-images.linux-amd64.tar.zst"
+    mode: '0644'
+    force: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Download RKE2 checksums
+  ansible.builtin.get_url:
+    url: "https://github.com/rancher/rke2/releases/download/{{ rke2_version }}/sha256sum-amd64.txt"
+    dest: "{{ rke2_local_download_path }}/sha256sum-amd64.txt"
+    mode: '0644'
+    force: false
+  delegate_to: localhost
+  run_once: true
+
+- name: Display downloaded RKE2 artifacts
+  ansible.builtin.find:
+    paths: "{{ rke2_local_download_path }}"
+    patterns: "*"
+  delegate_to: localhost
+  run_once: true
+  register: downloaded_files
+
+- name: Show downloaded RKE2 artifacts
+  ansible.builtin.debug:
+    msg: "Downloaded: {{ item.path | basename }}"
+  loop: "{{ downloaded_files.files }}"
+  delegate_to: localhost
+  run_once: true

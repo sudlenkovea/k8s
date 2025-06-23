@@ -1,4 +1,29 @@
 ---
+# Phase 1: System Preparation (runs on all hosts first)
+- name: Prepare system and install required packages on all hosts
+  ansible.builtin.import_tasks: system_preparation.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+    - system_preparation
+
+# Wait for all hosts to complete system preparation
+- name: Wait for all hosts to complete system preparation
+  ansible.builtin.wait_for:
+    timeout: 1
+  delegate_to: localhost
+  run_once: true
+  tags:
+    - cluster_setup
+    - cluster_expand
+
+# Phase 2: RKE2 Installation and Configuration (runs after all hosts are prepared)
+- name: Download RKE2 binaries locally
+  ansible.builtin.import_tasks: download_rke2_locally.yml
+  tags:
+    - cluster_setup
+    - cluster_expand
+
 - name: Install RKE2 on all nodes
   ansible.builtin.import_tasks: install_rke2.yml
   tags:
@@ -18,6 +43,7 @@
     - cluster_expand
     - cluster_addons_config
 
+# Phase 3: Cluster Initialization (sequential operations)
 - name: Start the RKE2 server on the leader node and wait for it to be ready
   ansible.builtin.import_tasks: start_rke2_leader.yml
   tags:

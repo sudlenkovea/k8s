@@ -1,0 +1,166 @@
+---
+# - name: Update repositories cache
+#   apt:
+#     update_cache: yes
+
+# - name: Update all packages to their latest version
+#   apt:
+#     name: "*"
+#     state: latest
+
+- name: Install packages
+  apt:
+    pkg: "{{ system_packages }}"
+  when: system_packages is defined and system_packages | length > 0
+  register: system_packages_installed
+
+- name: Install the common name packages
+  package:
+    name: "{{ common_packages }}"
+    state: latest
+  when: common_packages is defined and common_packages | length > 0
+  register: common_packages_installed
+
+- name: Remove bad packages
+  package:
+    name: "{{ packages_to_remove }}"
+    state: absent
+  when: packages_to_remove is defined and packages_to_remove | length > 0
+  register: packages_removed
+
+- name: Turn off swap immediately
+  ansible.builtin.command:
+    cmd: swapoff -a
+  become: true
+  register: swapoff_result
+  changed_when: swapoff_result.rc == 0
+  failed_when: false
+  when: disable_swap | default(true)
+
+- name: Disable swap permanently by commenting out swap entries in /etc/fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\s+swap\s+.*)$'
+    replace: '# \1'
+    backup: yes
+  become: true
+  register: fstab_swap_disabled
+  when: disable_swap | default(true)
+
+- name: Verify swap is disabled
+  ansible.builtin.command:
+    cmd: swapon --show
+  register: swap_status
+  changed_when: false
+  failed_when: false
+  when: disable_swap | default(true)
+
+- name: Display swap status
+  ansible.builtin.debug:
+    msg: "Swap status: {{ 'Disabled' if swap_status.stdout == '' else 'Still active: ' + swap_status.stdout }}"
+  when: 
+    - disable_swap | default(true)
+    - swap_status is defined
+
+#- name: Set hostname
+#  hostname:
+#   name: "{{ inventory_hostname }}"
+
+# - name: Cleanup /etc/hosts
+#   lineinfile:
+#     dest: /etc/hosts
+#     regexp: '^127.0.1.1'
+#     state: absent
+
+- name: Set sysctl File Limits
+  copy:
+    src: fs.conf
+    dest: /etc/sysctl.d
+  when: configure_sysctl_limits | default(true)
+  register: fs_limits_updated
+
+- name: Set Shared Open File Limits
+  copy:
+    src: somaxconn.conf
+    dest: /etc/sysctl.d
+  when: configure_sysctl_limits | default(true)
+  register: somaxconn_limits_updated
+
+- name: Set Open File Limits
+  copy:
+    src: files.conf
+    dest: /etc/security/limits.d
+  when: configure_sysctl_limits | default(true)
+  register: file_limits_updated
+
+- name: Ensure custom sysctl settings are applied
+  ansible.builtin.copy:
+    src: 99-custom-inotify.conf
+    dest: /etc/sysctl.d/99-custom-inotify.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: true
+  register: sysctl_config_updated
+  when: configure_custom_inotify | default(true)
+  
+- name: Reload sysctl configuration
+  ansible.builtin.command:
+    cmd: sysctl -p /etc/sysctl.d/99-custom-inotify.conf
+  become: true
+  when:
+    - sysctl_config_updated is changed
+    - configure_custom_inotify | default(true)
+
+- name: Check if reboot is required
+  set_fact:
+    reboot_required: >-
+      {{
+        (system_packages_installed is changed) or
+        (common_packages_installed is changed) or
+        (packages_removed is changed) or
+        (fstab_swap_disabled is changed) or
+        (fs_limits_updated is changed) or
+        (somaxconn_limits_updated is changed) or
+        (file_limits_updated is changed) or
+        (sysctl_config_updated is changed)
+      }}
+
+- name: Reboot hosts if system changes were made
+  ansible.builtin.reboot:
+    reboot_timeout: 600
+    connect_timeout: 20
+    test_command: uptime
+  when: 
+    - reboot_required | bool
+    - reboot_after_system_prep | default(true)
+  async: 1
+  poll: 0
+  register: reboot_started
+
+- name: Wait for hosts to come back online after reboot
+  ansible.builtin.wait_for_connection:
+    connect_timeout: 20
+    sleep: 5
+    delay: 5
+    timeout: 600
+  when: 
+    - reboot_required | bool
+    - reboot_after_system_prep | default(true)
+    - reboot_started is defined
+
+- name: Verify system is ready after reboot
+  ansible.builtin.command: uptime
+  register: uptime_check
+  when: 
+    - reboot_required | bool
+    - reboot_after_system_prep | default(true)
+    - reboot_started is defined
+
+- name: Display system uptime after reboot
+  ansible.builtin.debug:
+    msg: "System is ready: {{ uptime_check.stdout }}"
+  when: 
+    - reboot_required | bool
+    - reboot_after_system_prep | default(true)
+    - uptime_check is defined

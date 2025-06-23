@@ -23,6 +23,21 @@ tls-san-security: false
 #  - "{{ ansible_fqdn }}"
 #  - "{{ ansible_default_ipv4.address }}"
 cluster-domain: "{{ cluster_name }}"
+{% if etcd_expose_metrics | default(false) %}
+etcd-expose-metrics: true
+{% endif %}
+{% if kube_scheduler_arg is defined and kube_scheduler_arg|length > 0 %}
+kube-scheduler-arg:
+{% for arg in kube_scheduler_arg %}
+  - "{{ arg }}"
+{% endfor %}
+{% endif %}
+{% if kube_controller_manager_arg is defined and kube_controller_manager_arg|length > 0 %}
+kube-controller-manager-arg:
+{% for arg in kube_controller_manager_arg %}
+  - "{{ arg }}"
+{% endfor %}
+{% endif %}
 
 
 # Common settings for all nodes can be added below.

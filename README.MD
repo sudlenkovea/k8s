@@ -1,60 +1,133 @@
-# RKE2 Kubernetes Cluster Automation with Ansible
+# Ansible Role **RKE2 Setup**
 
-This project speeds up and simplifies the deployment, configuration, and expansion of an RKE2 Kubernetes cluster using Ansible. It simplifies the management of your Kubernetes infrastructure by encapsulating complex tasks into Ansible roles and playbooks that can be executed with simple commands.
+This role **prepares the system**, **installs**, and **configures** a Kubernetes cluster based on **RKE2** (Rancher Kubernetes Engine 2).
+A three-phase model is implemented to reliably and sequentially deploy or expand a cluster.
+
+---
+
+## Execution Phases
+
+### Phase 1. System preparation (runs on **all** hosts)
+
+1. **system_preparation.yml**
+   - Update repositories and packages
+   - Install required utilities
+   - Remove unnecessary software
+   - Configure system limits (`sysctl`, `limits.d`)
+   - Reboot the node and wait for it to come back online if required
+
+### Phase 2. RKE2 installation & configuration (runs on **all** hosts)
+
+2. **download_rke2_locally.yml** — cache RKE2 binaries locally
+3. **install_rke2.yml** — install RKE2 server/agent and systemd units
+4. **setup_kubectl_kubeconfig.yml** — install `kubectl` and distribute kubeconfig
+5. **config_rke_plugins.yml** — configure Ingress-NGINX, CoreDNS, and other addons
+
+### Phase 3. Cluster bootstrap & verification (sequential operations)
+
+6. **start_rke2_leader.yml** — start the first master (leader) node
+7. **configure_rke2_vars.yml** — retrieve and propagate the bootstrap token
+8. **start_rke2_masters.yml** — join remaining master nodes
+9. **start_rke2_workers.yml** — join worker nodes
+10. **verify_cluster.yml** — check node readiness and cluster health
+
+---
+
+## Role Variables
+
+### Default values (`defaults/main.yml`)
+
+```yaml
+# RKE2 version
+rke2_version: "v1.32.5+rke2r1"
+
+# Paths
+rke2_local_download_path: "/tmp/rke2_downloads"
+rke2_remote_install_path: "/tmp/rke2_install"
+
+# System settings
+configure_sysctl_limits: true
+configure_custom_inotify: true
+reboot_after_system_prep: true
+
+# Packages
+system_packages:
+  - net-tools
+  - screen
+  - software-properties-common
+  - ufw
+  - telnet
+  - traceroute
+  - qemu-guest-agent
+
+common_packages:
+  - mc
+  - unzip
+  - iftop
+  - iotop
+
+packages_to_remove:
+  - fail2ban
+  - metricbeat
+  - snapd
+```
+
+Additional variables (e.g. `cluster_name`, `kubelet_args`, `node_taint`, HelmChartConfig contents) are defined in inventory or via `-e`.
+
+---
+
+## Supported Tags
+
+| Tag                    | Purpose                                                                     |
+|------------------------|------------------------------------------------------------------------------|
+| `cluster_setup`        | Complete cluster deployment (all three phases).                              |
+| `cluster_expand`       | Add new nodes to an existing cluster.                                        |
+| `cluster_addons_config`| Install / update only addons (Ingress-NGINX, CoreDNS, etc.).                 |
+| `system_preparation`   | Run only Phase 1: OS preparation, limits, reboot.                            |
+
+Tags allow flexible role execution for specific tasks without affecting others.
+
+---
+
+## Usage Example
+
+```yaml
+- name: Deploy RKE2 cluster
+  hosts: all
+  become: true
+  roles:
+    - rke2_setup
+  vars:
+    cluster_name: "production"
+    rke2_version: "v1.32.5+rke2r1"
+```
+
+Run full deployment:
+
+```bash
+ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml \
+  --become --tags cluster_setup -u <sudo_or_root_user>
+```
+
+Run only system preparation:
+
+```bash
+ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml \
+  --become --tags system_preparation -u <sudo_or_root_user>
+```
+
+---
 
 ## Requirements
 
-- **Ansible 2.9+**: Ensure you have Ansible installed on your control machine.
-- **SSH Access**: SSH access and sudo privileges on all target nodes.
-- **RKE2 Requirements**: Target nodes must meet the [RKE2 requirements](https://docs.rke2.io/install/requirements/).
+* Ansible **2.9+**  
+* Target Linux hosts with **sudo** privileges  
+* Network access to package repositories & GitHub for RKE2 binaries  
 
-## Project Structure
-```sh
-.
-├── rke2-inventory-example.yaml # Inventory file for defining hosts and variables
-├── rke2_setup/ # Roles directory containing reusable roles
-│ └── tasks/ # Role for RKE2 setup and configuration
-│ └── handlers/
-│ └── templates/
-│ └── vars/
-└── rke2_setup.yaml # Main playbook for cluster setup and expansion
-```
+---
 
-## Usage
+## License
 
-### Cluster Setup
+MIT  
 
-To create or reconfigure your RKE2 cluster, use the `cluster_setup` tag with the `rke2_setup.yaml` playbook. This operation will configure the cluster according to the definitions in your `rke2-inventory-example.yaml` and roles.
-
-```sh
-ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml --become --tag cluster_setup -u sudo_enabled_or_root_user
-```
-This command initializes the RKE2 servers and agents defined in your `rke2-inventory-example.yaml`, applying all necessary configurations for a functional Kubernetes cluster.
-
-### Cluster Expansion
-To add new nodes to your existing RKE2 cluster (expansion), use the `cluster_expand` tag with the rke2_setup.yaml playbook. Before running, ensure the new nodes are defined in your `rke2-inventory-example.yaml` file.
-
-```sh
-ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml --become --tag cluster_expand -u sudo_enabled_or_root_user
-```
-This command applies configurations only necessary for integrating new nodes into the cluster, expanding your cluster's capacity.
-
-### Adding Additional Plugins Configuration
-To add additional/change general plugins options, use the `cluster_addons_config` tag with the rke2_setup.yaml playbook. This will configure additional plugins according to the definitions in your `rke2-inventory-example.yaml`l file.
-
-```sh
-ansible-playbook -i rke2-inventory-example.yaml rke2_setup.yaml --become --tag cluster_addons_config -u sudo_enabled_or_root_user
-```
-This command will configure additional plugins (such as Ingress NGINX and CoreDNS) on the master nodes, so that the RKE2 helm integration can immediately apply the configurations to the cluster.
-
-### Customizing Your Configuration
-You can customize your cluster configuration by editing the `rke2-inventory-example.yaml` file to specify the nodes, roles, and any variable overrides needed for your specific setup. Role-specific variables and templates can also be modified to fine-tune the behavior of your cluster deployment and management.
-
-## Additional Notes
-Ensure all target nodes have network connectivity and can be accessed via SSH from the control machine.
-Review and adjust role variables and templates to match your cluster requirements and security policies.
-Use Ansible's --check flag to perform a dry run of your playbooks and identify any potential issues before applying changes to your live environment.
-
-## Authors
-
-- [Evgenii Sudlenkov](https://github.com/sudlenkovea)
+Author — Evgenii Sudlenkov
