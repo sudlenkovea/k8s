@@ -29,8 +29,8 @@ reboot_after_system_prep: true
 
 # RKE2 installation configuration
 rke2_version: "v1.32.5+rke2r1"
-rke2_local_download_path: "/tmp/rke2_downloads"
-rke2_remote_install_path: "/tmp/rke2_install"
+rke2_local_download_path: "/tmp/{{ rke2_version }}_downloads"
+rke2_remote_install_path: "/tmp/{{ rke2_version }}_install"
 
 # RKE2 configuration parameters
 etcd_expose_metrics: false          # set to true to expose etcd metrics
