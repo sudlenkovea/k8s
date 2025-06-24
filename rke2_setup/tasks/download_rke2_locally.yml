@@ -43,17 +43,12 @@
   delegate_to: localhost
   run_once: true
 
-- name: Display downloaded RKE2 artifacts
-  ansible.builtin.find:
-    paths: "{{ rke2_local_download_path }}"
-    patterns: "*"
+- name: Verify downloaded RKE2 checksums
+  ansible.builtin.command: sha256sum -c sha256sum-amd64.txt --ignore-missing
+  args:
+    chdir: "{{ rke2_local_download_path }}"
   delegate_to: localhost
   run_once: true
-  register: downloaded_files
-
-- name: Show downloaded RKE2 artifacts
-  ansible.builtin.debug:
-    msg: "Downloaded: {{ item.path | basename }}"
-  loop: "{{ downloaded_files.files }}"
-  delegate_to: localhost
-  run_once: true
+  register: rke2_checksum_result
+  changed_when: false
+  failed_when: rke2_checksum_result.rc != 0
